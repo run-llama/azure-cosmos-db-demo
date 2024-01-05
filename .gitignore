@@ -1,0 +1,5 @@
+.venv
+.env
+tweets.json
+fewertweets.json
+__pycache__

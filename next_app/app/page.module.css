@@ -1,0 +1,32 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  justify-content:center;
+  align-items: center;
+  padding: 6rem;
+  min-height: 100vh;
+}
+
+.main form input {
+  padding: 10px;
+  margin-right: 10px;
+  width: 30em;
+}
+
+.main form button {
+  padding: 10px;
+}
+
+.response {
+  margin-top: 2rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fff;
+  background-color: #000;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.examples {
+  margin-top: 2em;
+}
