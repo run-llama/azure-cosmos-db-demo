@@ -261,14 +261,8 @@ Set up a Render account (we recommend logging in with your GitHub account, to si
 3. Set the root directory to `flask_app`
 4. Set the runtime to Python 3
 5. Select the Free tier
-
-**Important: set `PYTHON_VERSION`**. Your first deploy will fail because some packages will not be found, to fix this, set your python version to the same one you're using locally:
-
-1. Go to "Environment"
-2. Select "Add environment variable"
-3. Set the `key` to `PYTHON_VERSION` and the value to `3.11.6` (or whatever version you're using locally)
-4. Click "save changes"
-5. Go to the "Deploy" button in the top right and select "deploy latest commit". It should now deploy successfully.
+6. Set `gunicorn app:app --timeout 120` as your start command (the responses can take a while to generate)
+7. **Important: set `PYTHON_VERSION`**. Scroll down to "environment variables" and set the `key` to `PYTHON_VERSION` and the value to `3.11.6` (or whatever version you're using locally)
 
 ### Add your `.env` environment variables to Render
 
