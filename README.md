@@ -1,5 +1,5 @@
 # LlamaIndex retrieval augmented generation
-## with MongoDB, Flask and Next.js
+## with Azure Cosmos DB, Flask and Next.js
 
 See this demo [in action](https://mongodb-demo-frontend.onrender.com/)!
 
@@ -7,7 +7,7 @@ See this demo [in action](https://mongodb-demo-frontend.onrender.com/)!
 
 LlamaIndex is an open-source framework that lets you build AI applications powered by large language models (LLMs) like OpenAI's GPT-4. This application is a demonstration of how to do that, starting from scratch to a fully deployed web application. We'll show you how to run everything in this repo and then start customizing it for your own needs.
 
-In this example, we'll be using MongoDB as a data store and a vector store. Our back end will be a Python API powered by Flask, and our front end will be a JavaScript web app written in Next.js.
+In this example, we'll be using Azure Cosmos DB for MongoDB as a data store and a vector store. Our back end will be a Python API powered by Flask, and our front end will be a JavaScript web app written in Next.js.
 
 The app will load a series of tweets (loaded from a Twitter archive export) and then index them to answer questions about the author and their opinions.
 
@@ -35,25 +35,41 @@ We'll assume you have the current version of Python installed (3.11.6 or better)
 First clone this repo
 
 ```
-git clone git@github.com:run-llama/mongodb-demo.git
+git clone git@github.com:run-llama/azure-cosmos-db-demo.git
 ```
 
-### Sign up for MongoDB Atlas
+### Create an Azure Cosmos DB for MongoDB cluster
 
-We'll be using MongoDB's hosted database service, [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register). You can sign up for free and get a small hosted cluster for free:
+We'll be using the hosted database service, Azure Cosmos DB for MongoDB. You can sign up for free and get a small hosted cluster for free. Navigate to Azure Cosmos DB and select "Create":
 
-![MongoDB Atlas signup](./docs/1_signup.png)
+![Azure Cosmos DB resources](./docs/1_create.png)
 
-The signup process will walk you through the process of creating your cluster and ensuring it's configured for you to access. Once the cluster is created, choose "Connect" and then "Connect to your application". Choose Python, and you'll be presented with a connection string that looks like this:
+The signup process will walk you through the process of creating your cluster and ensuring it's configured for you to access. It's important to select "Azure Cosmos DB for MongoDB" as the API:
 
-![MongoDB Atlas connection string](./docs/2_connection_string.png)
+![Mongo](./docs/2_mongo.png)
+
+And because we want to do vector search, you'll need to select a vCore cluster:
+
+![vCore](./docs/3_vcore.png)
+
+When configuring your cluster, make sure to select the Free tier, and also **record the username and password you use** since you'll be using them later to connect:
+
+![Configure](./docs/4_configure.png)
+
+When configuring networking, for the purposes of the demo select the "Add 0.0.0.0 - 255.255.255.255" link. This will open up your database to every IP in the world, which is not secure, but convenient for a demo.
+
+![Networking](./docs/5_networking.png)
+
+Once your cluster is provisioned you should select it and navigate to "connection strings" where you'll find the connection string we'll need; you'll need to combine it with the username and password you created and noted earlier.
+
+![Connection string](./docs/7_connection.png)
 
 ### Set up environment variables
 
-Copy the connection string (make sure you include your password) and put it into a file called `.env` in the root of this repo. It should look like this:
+Copy the connection string, add your username and password, and put it into a file called `.env` in the root of this repo. It should look something like this:
 
 ```
-MONGODB_URI=mongodb+srv://seldo:xxxxxxxxxxx@llamaindexdemocluster.xfrdhpz.mongodb.net/?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://xxxxxxxxx:yyyyyyyyyy@llamaindex-demo.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000
 ```
 
 You will also need to choose a name for your database, and the collection where we will store the tweets, and also include them in .env. They can be any string, but this is what we used:
@@ -100,14 +116,13 @@ load_dotenv()
 import os
 import json
 from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
 
 # Load the tweets from a local file
 with open(json_file, 'r') as f:
     tweets = json.load(f)
 
 # Create a new client and connect to the server
-client = MongoClient(os.getenv('MONGODB_URI'), server_api=ServerApi('1'))
+client = MongoClient(os.getenv('MONGODB_URI'))
 db = client[os.getenv("MONGODB_DATABASE")]
 collection = db[os.getenv("MONGODB_COLLECTION")]
 
@@ -155,10 +170,10 @@ What you're doing here is creating a Reader which loads the data out of Mongo in
 
 ```python
 # Create a new client and connect to the server
-client = MongoClient(os.getenv("MONGODB_URI"), server_api=ServerApi('1'))
+client = MongoClient(os.getenv("MONGODB_URI"))
 
-# create Atlas as a vector store
-store = MongoDBAtlasVectorSearch(
+# create Azure Cosmos as a vector store
+store = AzureCosmosDBMongoDBVectorSearch(
     client,
     db_name=os.getenv('MONGODB_DATABASE'),
     collection_name=os.getenv('MONGODB_VECTORS'),
@@ -166,7 +181,7 @@ store = MongoDBAtlasVectorSearch(
 )
 ```
 
-Now you're creating a vector search client for Mongo. In addition to a MongoDB client object, you again tell it what database everything is in. This time you give it the name of the collection where you'll store the vector embeddings, and the name of the vector search index you'll create in the next step.
+Now you're creating a vector search client for Mongo. In addition to a MongoDB client object, you again tell it what database everything is in. This time you give it the name of the collection where you'll store the vector embeddings, and the name of the vector search index which will index the embeddings.
 
 This process can take a while, so when we kick it off we set the `show_progress` parameter to `True`, which prints a convenient little progress bar:
 
@@ -178,44 +193,7 @@ index = VectorStoreIndex.from_documents(
 )
 ```
 
-### Create a vector search index
-
-Now if all has gone well you should be able to log in to the Mongo Atlas UI and see two collections in your database: the original data in `tiny_tweets_collection`, and the vector embeddings in `tiny_tweets_vectors`.
-
-![MongoDB Atlas collections](./docs/3_vectors_in_db.png)
-
-Now it's time to create the vector search index so that you can query the data. First, click the Search tab, and then click "Create Search Index":
-
-![MongoDB Atlas create search index](./docs/4_search_tab.png)
-
-It's not yet possible to create a vector search index using the Visual Editor, so select JSON editor:
-
-![MongoDB Atlas JSON editor](./docs/5_json_editor.png)
-
-Now under "database and collection" select `tiny_tweets_db` and within that select `tiny_tweets_vectors`. Then under "Index name" enter `tiny_tweets_vector_index` (or whatever value you put for MONGODB_VECTOR_INDEX in `.env`). Under that, you'll want to enter this JSON object:
-
-```json
-{
-  "mappings": {
-    "dynamic": true,
-    "fields": {
-      "embedding": {
-        "dimensions": 1536,
-        "similarity": "cosine",
-        "type": "knnVector"
-      }
-    }
-  }
-}
-```
-
-This tells Mongo that the `embedding` field in each document (in the `tiny_tweets_vectors` collection) is a vector of 1536 dimensions (this is the size of embeddings used by OpenAI), and that we want to use cosine similarity to compare vectors. You don't need to worry too much about these values unless you want to use a different LLM to OpenAI entirely.
-
-The UI will ask you to review and confirm your choices, then you need to wait a minute or two while it generates the index. If all goes well, you should see something like this screen:
-
-![MongoDB Atlas index created](./docs/7_index_created.png)
-
-Now you're ready to query your data!
+Once that's complete, you're ready to query your data!
 
 ### Run a test query
 
@@ -248,7 +226,7 @@ For the rest of this tutorial we're going to assume you're working in the folder
 
 ### Run the Flask API
 
-The details of creating a Flask app are out of scope for this tutorial, but you can find one already set up for you in `flask_app` in the repo. It sets up a Mongo Atlas client just like we did in `3_query.py`, and it has one real method, `process_form`, which accepts a `query` parameter:
+The details of creating a Flask app are out of scope for this tutorial, but you can find one already set up for you in `flask_app` in the repo. It sets up a Mongo client just like we did in `3_query.py`, and it has one real method, `process_form`, which accepts a `query` parameter:
 
 ```python
 @app.route('/process_form', methods=['POST'])
@@ -297,14 +275,6 @@ Set up a Render account (we recommend logging in with your GitHub account, to si
 In the same way that you set `PYTHON_VERSION` you should now set all the other environment variables from your `.env` file in your Render environment. Your code needs to know where to connect to Mongo, etc.. So it should eventually look like this:
 
 ![Render environment variables](./docs/8_env_vars.png)
-
-### Add your app IPs to MongoDB Atlas
-
-To allow your API to connect to MongoDB, you need to add its IP addresses to the list of IPs allowed to connect by Mongo. You can find the IPs in the "Connect" button in the top right of Render.
-
-![Render IPs](./docs/9_ip_addresses.png)
-
-Go to MongoDB's UI and select "Network Access" from under "Security" in the menu on the left. Click "Add IP address" three times and add one of the IPs supplied by Render each time.
 
 With all this done, your API should now be up and running and able to connect to MongoDB. Time to build a frontend!
 

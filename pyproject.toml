@@ -12,6 +12,7 @@ python-dotenv = "^1.0.0"
 pymongo = "^4.6.1"
 flask = "^3.0.0"
 flask-cors = "^4.0.0"
+gunicorn = "^21.2.0"
 
 
 [build-system]
