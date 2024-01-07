@@ -203,7 +203,7 @@ You can do this by running
 python 3_query.py
 ```
 
-This sets up a connection to Atlas just like `2_load_and_index.py` did, then it creates a [query engine](https://docs.llamaindex.ai/en/stable/understanding/querying/querying.html#getting-started) and runs a query against it:
+This sets up a connection to Azure Cosmos DB just like `2_load_and_index.py` did, then it creates a [query engine](https://docs.llamaindex.ai/en/stable/understanding/querying/querying.html#getting-started) and runs a query against it:
 
 ```python
 query_engine = index.as_query_engine(similarity_top_k=20)
